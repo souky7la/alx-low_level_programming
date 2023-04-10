@@ -1,86 +1,89 @@
 #include "main.h"
-
-#define MAXSIZE 1024
-
-
 /**
- * __exit - prints error messages and exits with exit number
- *
- * @error: either the exit number or file descriptor
- * @str: name of either file_in or file_out
- * @fd: file descriptor
- *
- * Return: 0 on success
-*/
-int __exit(int error, char *str, int fd)
+ * _checker - check if file is NULL
+ * @file1: file1
+ * @file2: file2
+ */
+void _checker(char *file1, char *file2)
 {
-	switch (error)
-	{
-		case 97:
-			dprintf(STDERR_FILENO, "Usage: cp file_from file_to\n");
-			exit(error);
-		case 98:
-			dprintf(STDERR_FILENO, "Error: Can't read from file %s\n", s);
-			exit(error);
-		case 99:
-			dprintf(STDERR_FILENO, "Error: Can't write to %s\n", s);
-			exit(error);
-		case 100:
-			dprintf(STDERR_FILENO, "Error: Can't close fd %d\n", fd);
-			exit(error);
-		default:
-			return (0);
-	}
+	if (file1 == NULL)
+		read_err(file1);
+	if (file2 == NULL)
+		write_err(file2);
 }
-
 /**
- * main - create a copy of file
- *
- * @argc: argument counter
+ * read_err - check if error on file read
+ * @file: pointer to file
+ */
+void read_err(char *file)
+{
+	dprintf(STDERR_FILENO, "Error: Can't read from file %s\n", file);
+	exit(98);
+}
+/**
+ * write_err - check if error on file write
+ * @file: pointer to file
+ */
+void write_err(char *file)
+{
+	dprintf(STDERR_FILENO, "Error: Can't write to %s\n", file);
+	exit(99);
+}
+/**
+ * close_err - check if error on file close
+ * @fd: file descriptor
+ */
+void close_err(int fd)
+{
+	dprintf(STDERR_FILENO, "Error: Can't close fd %d\n", fd);
+	exit(100);
+}
+/**
+ * main - copies the content of a file to another file
+ * @argc: argument count
  * @argv: argument vector
- *
- * Return: 0 for success.
-*/
+ * Return: 0 success, -1 fail
+ */
 int main(int argc, char *argv[])
 {
-	int file_in, file_out;
-	int read_stat, write_stat;
-	int close_in, close_out;
-	char buffer[MAXSIZE];
+	int file_i, file_o, file_i_read, file_o_write, file_i_close,
+		file_o_close;
+	char *buffer;
+	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
 
-	/*if arguments are not 3*/
 	if (argc != 3)
-		__exit(97, NULL, 0);
-
-	/*sets file descriptor for copy from file*/
-	file_in = open(argv[1], O_RDONLY);
-	if (file_in == -1)
-		__exit(98, argv[1], 0);
-
-	/*sets file descriptor for copy to file*/
-	file_out = open(argv[2], O_CREAT | O_TRUNC | O_WRONLY, 0664);
-	if (file_out == -1)
-		__exit(99, argv[2], 0);
-
-	/*reads file_in as long as its not NULL*/
-	while ((read_stat = read(file_in, buffer, MAXSIZE)) != 0)
 	{
-		if (read_stat == -1)
-			__exit(98, argv[1], 0);
-
-		/*copy and write contents to file_out*/
-		write_stat = write(file_out, buffer, read_stat);
-		if (write_stat == -1)
-			__exit(99, argv[2], 0);
+		dprintf(STDERR_FILENO, "Usage: cp file_from file_to\n");
+		exit(97);
 	}
-
-	close_in = close(file_in); /*close file_in*/
-	if (close_in == -1)
-		__exit(100, NULL, file_in);
-
-	close_out = close(file_out); /*close file_out*/
-	if (close_out == -1)
-		__exit(100, NULL, file_out);
-
+	_checker(argv[1], argv[2]);
+	file_i = open(argv[1], O_RDONLY);
+	if (file_i == -1)
+		read_err(argv[1]);
+	file_o = open(argv[2], O_CREAT | O_WRONLY | O_TRUNC, mode);
+	if (file_o == -1)
+		write_err(argv[2]);
+	buffer = malloc(BUFSIZE * sizeof(char));
+	if (buffer == NULL)
+		return (1);
+	file_i_read = read(file_i, buffer, BUFSIZE);
+	if (file_i_read == -1)
+		read_err(argv[1]);
+	while (file_i_read > 0)
+	{
+		file_o_write = write(file_o, buffer, file_i_read);
+		if (file_o_write == -1)
+			write_err(argv[2]);
+		file_i_read = read(file_i, buffer, BUFSIZE);
+		if (file_i_read == -1)
+			read_err(argv[1]);
+	}
+	file_i_close = close(file_i);
+	if (file_i_close == -1)
+		close_err(file_i_close);
+	file_o_close = close(file_o);
+	if (file_o_close == -1)
+		close_err(file_o_close);
+	free(buffer);
 	return (0);
 }
